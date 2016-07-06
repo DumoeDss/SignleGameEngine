@@ -5,10 +5,7 @@
 
 #define MOUSE_BUFF_SIZE 16
 
-
-
-
-bool CreateDIInput(MyInputInterface **pObj, HWND hwnd, HINSTANCE hInst, bool exclusive)
+bool CreateInput(MyInputInterface **pObj, HWND hwnd, HINSTANCE hInst, bool exclusive)
 {
    if(!*pObj) *pObj = new MyDirectInputSystem(hwnd, hInst, exclusive);
    else return false;
@@ -134,8 +131,8 @@ bool MyMouse::UpdateDevice()
                   return false;
             }
 
-         m_xMPos += m_mouseState.lX;
-         m_yMPos += m_mouseState.lY;
+		 m_xMPos += m_mouseState.lX;
+		 m_yMPos += m_mouseState.lY;
          m_zMPos = m_mouseState.lZ;
       }
 
@@ -145,7 +142,6 @@ bool MyMouse::UpdateDevice()
 POINT MyMouse::GetPosition()
 {
    POINT pos;
-
    pos.x = m_xMPos;
    pos.y = m_yMPos;
    return pos;
@@ -190,7 +186,7 @@ MyDirectInputSystem::~MyDirectInputSystem()
 }
 
 
-bool MyDirectInputSystem::Initialize()
+bool MyDirectInputSystem::InitInput()
 {
    return (m_keyboard && m_mouse);
 }

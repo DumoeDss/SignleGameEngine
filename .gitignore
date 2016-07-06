@@ -21,6 +21,9 @@
 bld/
 [Bb]in/
 [Oo]bj/
+Win32/
+*/GameMedia/
+*/maps/
 
 # Visual Studio 2015 cache/options directory
 .vs/

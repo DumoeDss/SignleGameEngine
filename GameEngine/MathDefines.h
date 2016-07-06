@@ -1,16 +1,17 @@
 #pragma once
 
-
-#define UGP_FRONT    0
-#define UGP_BACK     1
-#define UGP_ON_PLANE 2
-#define UGP_CLIPPED  3
-#define UGP_CULLED   4
-#define UGP_VISIBLE  5
+enum pos{
+	OBJ_FRONT=0,
+	OBJ_BACK,
+	OBJ_ON_PLANE,
+	OBJ_CLIPPED,
+	OBJ_CULLED,
+	OBJ_VISIBLE
+};
 
 #ifndef PI
-#define PI 3.14159265358979323846
+#define PI 3.1415926535897
 #endif
 
-#define GET_RADIANS(degree) (float)(degree / 180.0f * PI)
+#define GET_RADIANS(angel) (float)(angel / 180.0f * PI)
 

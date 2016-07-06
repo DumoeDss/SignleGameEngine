@@ -21,7 +21,6 @@ inline void ApplyForce(MyVector3 force, myPointMass *m)
 
 inline void SimulateMass(float dt, myPointMass *m)
 {
-   // Calculate new velocity and position.
    if(m != 0)
       {
          m->velocity += (m->force / m->m) * dt;

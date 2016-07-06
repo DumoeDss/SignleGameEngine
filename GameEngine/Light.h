@@ -10,11 +10,11 @@ struct myLight
 		specularR(0), specularG(0), specularB(0), specularA(0),
 		range(0),
 		falloff(0),
-		attenuation0(0), attenuation1(0), attenuation2(0),
+		attenuation0(1.0f), attenuation1(0), attenuation2(0),
 		lightTheta(0),
 		lightPhi(0)
 	{
-
+		color = D3DXCOLOR(0, 0, 0, 0);
 	}
 
 	int lightType;	//类型
@@ -30,4 +30,5 @@ struct myLight
 	float attenuation2;
 	float lightTheta;	//聚光灯内部锥形圆锥角
 	float lightPhi;	//聚光灯外部锥形圆锥角
+	D3DXCOLOR color;
 };

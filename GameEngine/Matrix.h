@@ -1,9 +1,5 @@
 #pragma once
-
-
 #include"Vector.h"
-
-
 class MyMatrix4x4
 {
    public:

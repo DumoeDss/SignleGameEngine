@@ -2,17 +2,16 @@
 
 #include"MathLibrary.h"
 
-
 class MyPlane
 {
    public:
       MyPlane();
       MyPlane(float A, float B, float C, float D);
       MyPlane(MyVector3 &n, float D);
-
+	  //创建平面
       void CreatePlaneFromTri(MyVector3 &v1, MyVector3 &v2,
                               MyVector3 &v3);
-
+	  //平面法向量
       void SetPlaneNormal(float A, float B, float C)
       {
          a = A; b = B; c = C;

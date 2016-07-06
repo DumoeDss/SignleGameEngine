@@ -5,7 +5,7 @@
 #define STRIAGHT_PATH 0
 #define CURVE_PATH 1
 
-
+//文件路径，用于载入模型
 class MyPath
 {
    public:
@@ -19,17 +19,16 @@ class MyPath
       void Shutdown();
 
 
-      int m_type;          // Type of path this is.
+      int m_type;          
 
-      MyVector3 m_startPos; // Start location of this path.
-      MyVector3 m_control1; // Control point one (only for curve paths).
-      MyVector3 m_control2; // Control point two (only for curve paths).
-      MyVector3 m_endPos;   // Destination location.
+      MyVector3 m_startPos;
+      MyVector3 m_control1; 
+      MyVector3 m_control2; 
+      MyVector3 m_endPos; 
+      float m_start;    
+      float m_total;     
 
-      float m_start;       // Starting lenght for this path animation.
-      float m_total;       // Total length distance of this animation path.
-
-      MyPath *m_next;       // Pointer to the next path in our link list.
+      MyPath *m_next; 
 };
 
 

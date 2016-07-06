@@ -5,7 +5,7 @@
 #include"Plane.h"
 #include"MathDefines.h"
 
-
+//¶à±ßÐÎ
 class MyPolygon
 {
    public:

@@ -10,13 +10,13 @@ class MyKeyboard : public MyDeviceInterface
    public:
       MyKeyboard(LPDIRECTINPUT8 input, HWND hwnd);
       ~MyKeyboard() { Shutdown(); }
-
+	  //更新设备状态
       bool UpdateDevice();
-
+	  //按键按下
       int ButtonUp(unsigned int key);
       int ButtonDown(unsigned int key);
-
-      POINT GetPosition();
+	  //获取位置
+      POINT GetPosition();	  
       POINT GetZPosition();
 
       void Shutdown();
@@ -32,12 +32,12 @@ class MyMouse : public MyDeviceInterface
    public:
       MyMouse(LPDIRECTINPUT8 input, HWND hwnd, bool exclusive);
       ~MyMouse() { Shutdown(); }
-
+	  //更新设备状态
       bool UpdateDevice();
-
+	  //按键按下
       int ButtonUp(unsigned int key);
       int ButtonDown(unsigned int key);
-
+	  //获取位置
       POINT GetPosition();
       POINT GetZPosition();
 
@@ -64,17 +64,19 @@ class MyDirectInputSystem : public MyInputInterface
    public:
       MyDirectInputSystem(HWND hwnd, HINSTANCE hInst, bool exclusive);
       ~MyDirectInputSystem();
-
-      bool Initialize();
+	  //初始化
+      bool InitInput();
+	  //更新设备状态
       bool UpdateDevices();
-      
+      //键盘按键
       int IsKeyUp(unsigned int key);
       int IsKeyDown(unsigned int key);
-
+	  //鼠标按键
       int MouseButtonUp(unsigned int button);
       int MouseButtonDown(unsigned int button);
-
+	  //获取鼠标位置
       POINT GetMousePos();
+	  //获取鼠标滑轮值
       long GetMouseWheelPos();
 
       void Shutdown();
@@ -85,5 +87,5 @@ class MyDirectInputSystem : public MyInputInterface
       MyKeyboard *m_keyboard;
       MyMouse *m_mouse;
 };
-
-bool CreateDIInput(MyInputInterface **pObj, HWND hwnd, HINSTANCE hInst, bool exclusive);
+//创建输入引擎对象
+bool CreateInput(MyInputInterface **pObj, HWND hwnd, HINSTANCE hInst, bool exclusive);

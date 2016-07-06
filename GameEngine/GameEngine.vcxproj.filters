@@ -48,15 +48,6 @@
     <ClInclude Include="SoundInterface.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="RainPS.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="XMesh.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="XStructures.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="BoundingGeometry.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -108,6 +99,18 @@
     <ClInclude Include="Defines.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Particle.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="SkyBox.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Terrain.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="XModel.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D3DInput.cpp">
@@ -132,15 +135,6 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="LogSystem.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="RainPS.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="XMesh.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="XStructures.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="BoundingGeometry.cpp">
@@ -173,5 +167,21 @@
     <ClCompile Include="ObjModel.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Particle.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="SkyBox.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Terrain.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="XModel.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
+    <None Include="ClassDiagram1.cd" />
   </ItemGroup>
 </Project>

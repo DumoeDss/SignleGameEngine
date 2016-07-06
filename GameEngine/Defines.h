@@ -1,30 +1,30 @@
 #pragma once
 
 #include <Windows.h>
-
+//方法返回值
 enum MethodResult {
 	RE_INFINITE = -2,
 	RE_INVALID = -1,
 	RE_OK = 1,
 	RE_FAIL = 0,
 };
-
+//光源类型
 enum LightType {
 	LIGHT_POINT = 1,	//点光源
 	LIGHT_DIRECTIONAL = 2,	//环境光
 	LIGHT_SPOT = 3	//聚光灯
 };
-
+//用于百分比放置GUI
 #define PERCENT_OF(a,b) (int)(a * b)
 
 //键盘按键数组总数
 static const int keySize = 256;
-
+//FVF类型
 enum FVFType {
 	MY_FVF_GUI = 2,
 	MY_FVF_MV = 3,
 };
-
+//控件类型
 enum ControlType {
 	GAME_GUI_STATICTEXT=1,
 	GAME_GUI_BUTTON,
@@ -46,7 +46,7 @@ enum MouseButton {
 #define WinHWND HWND
 
 typedef long VertexType;
-
+//渲染图形类型
 enum PrimType
 {
 	NULL_TYPE,
@@ -57,26 +57,26 @@ enum PrimType
 	LINE_LIST,
 	LINE_STRIP
 };
-
+//渲染状态
 enum RenderState
 {
-	CULL_NONE,
-	CULL_CW,
-	CULL_CCW,
-	DEPTH_NONE,
-	DEPTH_READONLY,
-	DEPTH_READWRITE,
-	SHADE_POINTS,
-	SHADE_SOLIDTRI,
-	SHADE_WIRETR,
-	SHADE_WIREPOLY,
-	TRANSPARENCY_NONE,
-	TRANSPARENCY_ENABLE
+	CULL_NONE,	//无裁剪
+	CULL_CW,	//顺时针裁剪
+	CULL_CCW,	//逆时针裁剪
+	DEPTH_NONE,	//无深度缓存
+	DEPTH_READONLY,	//只读深度缓存
+	DEPTH_READWRITE,	//读写深度缓存
+	SHADE_POINTS,	//点着色
+	SHADE_SOLIDTRI,	//实心三角形着色
+	SHADE_WIRETR,	//三角形线框着色
+	SHADE_WIREPOLY,	//多边形线框着色
+	TRANSPARENCY_NONE,	//无透明度
+	TRANSPARENCY_ENABLE	//使用透明度
 };
-
+//透明状态
 enum TransState
 {
-	TRANS_ZERO = 1,
+	TRANS_ZERO = 1,	//融合因子
 	TRANS_ONE,
 	TRANS_SRCCOLOR,
 	TRANS_INVSRCCOLOR,
@@ -92,43 +92,43 @@ enum TransState
 	TRANS_BLENDFACTOR,
 	TRANS_INVBLENDFACTOR,
 };
-
+//纹理状态
 enum TextureState
 {
-	MIN_FILTER,
-	MAG_FILTER,
-	MIP_FILTER
+	MIN_FILTER,	//缩小过滤器
+	MAG_FILTER,	//放大
+	MIP_FILTER	//多级渐变
 };
-
+//过滤器类型
 enum FilterType
 {
-	POINT_TYPE,
-	LINEAR_TYPE,
-	ANISOTROPIC_TYPE
+	POINT_TYPE,	//点过滤器
+	LINEAR_TYPE,	//线
+	ANISOTROPIC_TYPE	//纹理
 };
-
-enum UGP_MS_TYPE
+//多采样
+enum MultiSampleType
 {
-	UGP_MS_NONE,
-	UGP_MS_SAMPLES_2,
-	UGP_MS_SAMPLES_4,
-	UGP_MS_SAMPLES_8,
-	UGP_MS_SAMPLES_16
+	MY_MS_NONE,
+	MY_MS_SAMPLES_2,
+	MY_MS_SAMPLES_4,
+	MY_MS_SAMPLES_8,
+	MY_MS_SAMPLES_16
 };
-
-enum UGP_FOG_TYPE
+//雾效类型
+enum FogType
 {
-	UGP_VERTEX_FOG,
-	UGP_PIXEL_FOG
+	FOG_VERTEX,	//顶点雾
+	FOG_PIXEL	//像素雾
 };
-
+//GUI顶点结构
 struct myGUIVertex
 {
 	float x, y, z, rhw;
 	unsigned long color;
 	float tu, tv;
 };
-
+//模型顶点结构
 struct myModelVertex
 {
 	float x, y, z;
@@ -136,7 +136,7 @@ struct myModelVertex
 	unsigned long color;
 	float tu, tv;
 };
-
+//天空盒顶点结构
 struct mySkyBoxVertex
 {
 	float	x, y, z;
@@ -144,6 +144,22 @@ struct mySkyBoxVertex
 };
 #define D3DFVF_SKYBOX D3DFVF_XYZ|D3DFVF_TEX1
 
-#define UGPCOLOR_ARGB(a,r,g,b) ((unsigned long)((((a)&0xff)<<24)|\
+#define MYCOLOR_ARGB(a,r,g,b) ((unsigned long)((((a)&0xff)<<24)|\
 							   (((r)&0xff)<<16)|(((g)&0xff)<<8)|\
 							   ((b)&0xff)))
+//判断函数是否返回成功
+#ifndef HR
+#define HR(x)    { hr = x; if( FAILED(hr) ) { return hr; } }
+#endif
+//删除对象指针
+#ifndef SAFE_DELETE					
+#define SAFE_DELETE(p)       { if(p) { delete (p);     (p)=NULL; } }
+#endif    
+//释放对象指针
+#ifndef SAFE_RELEASE			
+#define SAFE_RELEASE(p)      { if(p) { (p)->Release(); (p)=NULL; } }
+#endif
+//删除数组
+#ifndef SAFE_DELETE_ARRAY
+#define SAFE_DELETE_ARRAY(p) { if(p) { delete[] (p);   (p)=NULL; } }
+#endif 

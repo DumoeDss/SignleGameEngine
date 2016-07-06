@@ -16,7 +16,7 @@ MyCommandScript::~MyCommandScript()
    Shutdown();
 }
 
-
+//加载脚本文件
 bool MyCommandScript::LoadScriptFile(char *filename)
 {
    ifstream input, input2;
@@ -50,7 +50,7 @@ bool MyCommandScript::LoadScriptFile(char *filename)
    return true;
 }
 
-
+//读取命令
 void MyCommandScript::ParseCommand(char *destCommand)
 {
    int commandSize = 0;
@@ -83,7 +83,7 @@ void MyCommandScript::ParseCommand(char *destCommand)
    destCommand[commandSize] = '\0';
 }
 
-
+//读取String类型值
 void MyCommandScript::ParseStringParam(char *destString)
 {
 
@@ -120,7 +120,7 @@ void MyCommandScript::ParseStringParam(char *destString)
    destString[paramSize] = '\0';
 }
 
-
+//读取Bool类型值
 bool MyCommandScript::ParseBoolParam()
 {
 
@@ -148,7 +148,7 @@ bool MyCommandScript::ParseBoolParam()
    return false;
 }
 
-
+//读取Int类型值
 int MyCommandScript::ParseIntParam()
 {
 
@@ -174,7 +174,7 @@ int MyCommandScript::ParseIntParam()
    return atoi(string);
 }
 
-
+//读取Float类型值
 float MyCommandScript::ParseFloatParam()
 {
 
@@ -200,40 +200,40 @@ float MyCommandScript::ParseFloatParam()
    return (float)atof(string);
 }
 
-
+//移动开始部分
 void MyCommandScript::MoveToStart()
 {
    currentLine = 0;
    currentLineChar = 0;
 }
 
-
+//移动到下一行
 void MyCommandScript::MoveToNextLine()
 {
    currentLine++;
    currentLineChar = 0;
 }
 
-
+//返回当前行数
 int MyCommandScript::GetCurrentLineNum()
 {
    return currentLine;
 }
 
-
+//获取总行数
 int MyCommandScript::GetTotalLines()
 {
    return totalScriptLines;
 }
 
-
+//注释
 bool MyCommandScript::IsLineComment()
 {
    if(m_script[currentLine][0] == '#') return true;
    return false;
 }
 
-
+//释放对象资源
 void MyCommandScript::Shutdown()
 {
    if(m_script)

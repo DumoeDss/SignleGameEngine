@@ -13,3 +13,5 @@
 #include "Camera.h"
 #include "Matrix.h"
 #include "BoundingGeometry.h"
+#include "Particle.h"
+#include "Terrain.h"

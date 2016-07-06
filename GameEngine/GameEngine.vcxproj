@@ -39,7 +39,7 @@
     <UseOfMfc>false</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
@@ -143,15 +143,16 @@
     <ClInclude Include="Polygon.h" />
     <ClInclude Include="PropertyScript.h" />
     <ClInclude Include="Quaternion.h" />
-    <ClInclude Include="RainPS.h" />
+    <ClInclude Include="Particle.h" />
     <ClInclude Include="Ray.h" />
     <ClInclude Include="RenderInterface.h" />
     <ClInclude Include="Route.h" />
+    <ClInclude Include="SkyBox.h" />
     <ClInclude Include="SoundInterface.h" />
+    <ClInclude Include="Terrain.h" />
     <ClInclude Include="Token.h" />
     <ClInclude Include="Vector.h" />
-    <ClInclude Include="XMesh.h" />
-    <ClInclude Include="XStructures.h" />
+    <ClInclude Include="XModel.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoundingGeometry.cpp" />
@@ -168,13 +169,18 @@
     <ClCompile Include="Polygon.cpp" />
     <ClCompile Include="PropertyScript.cpp" />
     <ClCompile Include="Quaternion.cpp" />
-    <ClCompile Include="RainPS.cpp" />
+    <ClCompile Include="Particle.cpp" />
     <ClCompile Include="Ray.cpp" />
     <ClCompile Include="Route.cpp" />
+    <ClCompile Include="SkyBox.cpp" />
+    <ClCompile Include="Terrain.cpp" />
     <ClCompile Include="Token.cpp" />
     <ClCompile Include="Vector.cpp" />
-    <ClCompile Include="XMesh.cpp" />
-    <ClCompile Include="XStructures.cpp" />
+    <ClCompile Include="XModel.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
+    <None Include="ClassDiagram1.cd" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,6 +1,6 @@
 #include"Frustum.h"
 
-
+//计算视锥体
 void MyFrustum::CalculateFrustum(float *mv, float *proj)
 {
    if(mv == 0 || proj == 0)
@@ -8,7 +8,7 @@ void MyFrustum::CalculateFrustum(float *mv, float *proj)
 
    float clip[16] = {0};
 
-   clip[0] = mv[0] * proj[0] + mv[1] * proj[4] + mv[2] * proj[8]  + mv[3] * proj[12];
+    clip[0] = mv[0] * proj[0] + mv[1] * proj[4] + mv[2] * proj[8]  + mv[3] * proj[12];
 	clip[1] = mv[0] * proj[1] + mv[1] * proj[5] + mv[2] * proj[9]  + mv[3] * proj[13];
 	clip[2] = mv[0] * proj[2] + mv[1] * proj[6] + mv[2] * proj[10] + mv[3] * proj[14];
 	clip[3] = mv[0] * proj[3] + mv[1] * proj[7] + mv[2] * proj[11] + mv[3] * proj[15];
@@ -80,7 +80,7 @@ void MyFrustum::NormalizeFrustum()
       }
 }
 
-
+//判断是否可见
 bool MyFrustum::isPointVisiable(float x, float y, float z)
 {
    for(int i = 0; i < MAX_SIDES; i++)

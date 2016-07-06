@@ -20,15 +20,15 @@ void MyPolygon::Clip(MyPlane &pl, MyPolygon *front, MyPolygon *back)
 
    switch(pl.ClassifyPoint(m_vertexList[0]))
       {
-         case UGP_FRONT:
+         case OBJ_FRONT:
             frontVecs[frontIndex++] = m_vertexList[0];
             break;
          
-         case UGP_BACK:
+         case OBJ_BACK:
             backVecs[backIndex++] = m_vertexList[0];
             break;
          
-         case UGP_ON_PLANE:
+         case OBJ_ON_PLANE:
             frontVecs[frontIndex++] = m_vertexList[0];
             backVecs[backIndex++] = m_vertexList[0];
             //frontVecs[backIndex++] = m_vertexList[0];
@@ -54,7 +54,7 @@ void MyPolygon::Clip(MyPlane &pl, MyPolygon *front, MyPolygon *back)
          v1Type = pl.ClassifyPoint(v1);
          v2Type = pl.ClassifyPoint(v2);
 
-         if(v2Type == UGP_ON_PLANE)
+         if(v2Type == OBJ_ON_PLANE)
             {
                frontVecs[frontIndex++] = m_vertexList[index];
                backVecs[backIndex++] = m_vertexList[index];
@@ -68,15 +68,15 @@ void MyPolygon::Clip(MyPlane &pl, MyPolygon *front, MyPolygon *back)
                ray.m_direction.Normal();
                
                if(ray.Intersect(pl, false, length, &intersectPoint, 0) &&
-                  (v1Type != UGP_ON_PLANE))
+                  (v1Type != OBJ_ON_PLANE))
                   {
                      frontVecs[frontIndex++] = intersectPoint;
                      backVecs[backIndex++] = intersectPoint;
                   }
                
                if(index == 0) continue;
-               if(v2Type == UGP_FRONT) frontVecs[frontIndex++] = m_vertexList[index];
-               else if(v2Type == UGP_BACK) backVecs[backIndex++] = m_vertexList[index];
+               if(v2Type == OBJ_FRONT) frontVecs[frontIndex++] = m_vertexList[index];
+               else if(v2Type == OBJ_BACK) backVecs[backIndex++] = m_vertexList[index];
             }
       }
    

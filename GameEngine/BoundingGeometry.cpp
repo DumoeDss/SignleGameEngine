@@ -1,6 +1,6 @@
 #include"BoundingGeometry.h"
 
-
+//创建边界框
 void MyBoundingBox::CreateFromPoints(MyVector3 *pointList, int numPoints)
 {
    for(int i = 0; i < numPoints; i++)
@@ -16,7 +16,7 @@ void MyBoundingBox::CreateFromPoints(MyVector3 *pointList, int numPoints)
       }
 }
 
-
+//判断某点是否在边界框内
 bool MyBoundingBox::isPointInside(MyVector3 &v)
 {
    if(m_max.x <= v.x) return false;
@@ -29,7 +29,7 @@ bool MyBoundingBox::isPointInside(MyVector3 &v)
    return true;	
 }
 
-
+//判断是否与射线相交
 bool MyBoundingBox::Intersect(MyRay ray, float *dist)
 {
    float t0, t1, temp;
@@ -90,7 +90,7 @@ bool MyBoundingBox::Intersect(MyRay ray, float *dist)
    return true;
 }
 
-
+//判断是否与射线相交
 bool MyBoundingBox::Intersect(MyRay ray, float length, float *dist)
 {
    float t0, t1, temp;
@@ -154,7 +154,7 @@ bool MyBoundingBox::Intersect(MyRay ray, float length, float *dist)
    return true;
 }
 
-
+//获取平面
 void MyBoundingBox::GetPlanes(MyPlane *planes)
 {
    planes[0].a = 1.0f; planes[0].b = 0.0f; planes[0].c = 0.0f;
@@ -176,14 +176,14 @@ void MyBoundingBox::GetPlanes(MyPlane *planes)
    planes[5].d = -(0 * m_min.x + -1 * m_min.y + 0 * m_min.z);
 }
 
-
+//判断射线是否在边界框内
 bool MyBoundingBox::isRayInside(MyRay &ray, float length)
 {
    MyVector3 endPos = ray.m_origin + (ray.m_direction * length);
    return (isPointInside(ray.m_origin) && isPointInside(endPos));
 }
 
-
+//创建边界球
 void MyBoundingSphere::CreateFromPoints(MyVector3 *pointList, int numPoints)
 {
    MyVector3 min, max;
@@ -216,7 +216,7 @@ void MyBoundingSphere::CreateFromPoints(MyVector3 *pointList, int numPoints)
    m_radius = sqrt(maxDistance);
 }
 
-
+//判断点是否在边界球内
 bool MyBoundingSphere::isPointInside(MyVector3 &v)
 {
    MyVector3 intersect = m_center - v;
@@ -228,7 +228,7 @@ bool MyBoundingSphere::isPointInside(MyVector3 &v)
    return false;
 }
 
-
+//判断是否与射线相交
 bool MyBoundingSphere::Intersect(MyRay ray, float *dist)
 {
    MyVector3 RayToSphereDir;
@@ -255,7 +255,7 @@ bool MyBoundingSphere::Intersect(MyRay ray, float *dist)
    return true;
 }
 
-
+//判断是否与射线相交
 bool MyBoundingSphere::Intersect(MyRay ray, float length, float *dist)
 {
    MyVector3 RayToSphereDir;
@@ -286,14 +286,14 @@ bool MyBoundingSphere::Intersect(MyRay ray, float length, float *dist)
    return true;
 }
 
-
+//判断射线是否在边界框内
 bool MyBoundingSphere::isRayInside(MyRay &ray, float length)
 {
    MyVector3 endPos = ray.m_origin + (ray.m_direction * length);
    return (isPointInside(ray.m_origin) && isPointInside(endPos));
 }
 
-
+//判断边界框是否碰撞
 bool BoxToBoxIntersect(MyBoundingBox &bb1, MyBoundingBox &bb2)
 {
    if((bb1.m_min.x > bb2.m_max.x) || (bb2.m_min.x > bb1.m_max.x))
@@ -306,7 +306,7 @@ bool BoxToBoxIntersect(MyBoundingBox &bb1, MyBoundingBox &bb2)
    return true;
 }
 
-
+//判断边界球是否碰撞
 bool SphereToSphereIntersect(MyBoundingSphere &bs1, MyBoundingSphere &bs2)
 {
    MyVector3 intersect = bs1.m_center - bs2.m_center;

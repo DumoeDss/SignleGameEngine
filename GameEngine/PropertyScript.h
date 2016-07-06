@@ -1,7 +1,5 @@
 #pragma once
 
-
-
 enum enVarType { NULL_VAR = 0, INT_VAR, FLOAT_VAR,
                  STRING_VAR, VECTOR_VAR };
 
@@ -45,8 +43,7 @@ class MyVariable
       char *stringVal;
       myVector_xyz vecVal;
 };
-
-
+// Ù–‘Ω≈±æ
 class MyPropertyScript
 {
    public:

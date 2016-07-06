@@ -148,11 +148,11 @@ int MyPlane::ClassifyPolygon(MyPolygon &pol)
 
          switch(type)
             {
-               case UGP_FRONT:
+               case OBJ_FRONT:
                   frontPolys++;
                   break;
                
-               case UGP_BACK:
+               case OBJ_BACK:
                   backPolys++;
                   break;
                
@@ -164,11 +164,11 @@ int MyPlane::ClassifyPolygon(MyPolygon &pol)
             }
       }
 
-   if(planePolys == 3) return UGP_ON_PLANE;
-   else if(frontPolys == 3) return UGP_FRONT;
-   else if(backPolys == 3) return UGP_BACK;
+   if(planePolys == 3) return OBJ_ON_PLANE;
+   else if(frontPolys == 3) return OBJ_FRONT;
+   else if(backPolys == 3) return OBJ_BACK;
 
-   return UGP_CLIPPED;
+   return OBJ_CLIPPED;
 }
 
 
@@ -176,10 +176,10 @@ int MyPlane::ClassifyPoint(MyVector3 &v)
 {
    float distance = a * v.x + b * v.y + c * v.z + d;
 
-   if(distance > 0.001) return UGP_FRONT;
-   if(distance < -0.001) return UGP_BACK;
+   if(distance > 0.001) return OBJ_FRONT;
+   if(distance < -0.001) return OBJ_BACK;
 
-   return UGP_ON_PLANE;
+   return OBJ_ON_PLANE;
 }
 
 
@@ -187,10 +187,10 @@ int MyPlane::ClassifyPoint(float x, float y, float z)
 {
    float distance = a * x + b * y + c * z + d;
 
-   if(distance > 0.001) return UGP_FRONT;
-   if(distance < -0.001) return UGP_BACK;
+   if(distance > 0.001) return OBJ_FRONT;
+   if(distance < -0.001) return OBJ_BACK;
 
-   return UGP_ON_PLANE;
+   return OBJ_ON_PLANE;
 }
 
 

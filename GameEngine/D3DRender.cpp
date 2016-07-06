@@ -1,5 +1,9 @@
 #include <stdio.h>
 #include "D3DRender.h"
+#include "Particle.h"
+#include "SkyBox.h"
+#include "Camera.h"
+#include "Terrain.h"
 
 inline unsigned long FtoDW(float v)
 {
@@ -8,11 +12,11 @@ inline unsigned long FtoDW(float v)
 
 #define D3DFVF_GUI (D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1)
 #define D3DFVF_MV (D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX1)
-
-bool CreateD3DRenderer(MyRenderInterface **pObj)
+//创建渲染引擎对象
+bool CreateD3DRender(MyD3DRender **pObj)
 {
 	if(!*pObj) 
-		*pObj = new MyD3DRenderer();
+		*pObj = new MyD3DRender();
 	else
 		return false;
 
@@ -30,7 +34,7 @@ unsigned long CreateD3DFVF(int flags)
 }
 
 D3DMULTISAMPLE_TYPE GetD3DMultiSampleType(LPDIRECT3D9 d3d,
-	UGP_MS_TYPE ms, D3DDEVTYPE type, D3DFORMAT format, bool fullscreen)
+	MultiSampleType ms, D3DDEVTYPE type, D3DFORMAT format, bool fullscreen)
 {
 	D3DMULTISAMPLE_TYPE t = D3DMULTISAMPLE_NONE;
 
@@ -41,22 +45,22 @@ D3DMULTISAMPLE_TYPE GetD3DMultiSampleType(LPDIRECT3D9 d3d,
 		case D3DMULTISAMPLE_NONE:
 			t = D3DMULTISAMPLE_NONE;
 			break;
-		case UGP_MS_SAMPLES_2:
+		case MY_MS_SAMPLES_2:
 			if(d3d->CheckDeviceMultiSampleType(D3DADAPTER_DEFAULT,
 				type,format,!fullscreen,D3DMULTISAMPLE_2_SAMPLES,
 				NULL) == D3D_OK) t = D3DMULTISAMPLE_2_SAMPLES;
 			break;
-		case UGP_MS_SAMPLES_4:
+		case MY_MS_SAMPLES_4:
 			if(d3d->CheckDeviceMultiSampleType(D3DADAPTER_DEFAULT,
 				type,format,!fullscreen,D3DMULTISAMPLE_4_SAMPLES,
 				NULL) == D3D_OK) t = D3DMULTISAMPLE_4_SAMPLES;
 			break;
-		case UGP_MS_SAMPLES_8:
+		case MY_MS_SAMPLES_8:
 			if(d3d->CheckDeviceMultiSampleType(D3DADAPTER_DEFAULT,
 				type,format,!fullscreen,D3DMULTISAMPLE_8_SAMPLES,
 				NULL) == D3D_OK) t = D3DMULTISAMPLE_8_SAMPLES;
 			break;
-		case UGP_MS_SAMPLES_16:
+		case MY_MS_SAMPLES_16:
 			if(d3d->CheckDeviceMultiSampleType(D3DADAPTER_DEFAULT,
 				type,format,!fullscreen,D3DMULTISAMPLE_16_SAMPLES,
 				NULL) == D3D_OK) t = D3DMULTISAMPLE_16_SAMPLES;
@@ -68,109 +72,116 @@ D3DMULTISAMPLE_TYPE GetD3DMultiSampleType(LPDIRECT3D9 d3d,
 	return t;
 }
 
-MyD3DRenderer::MyD3DRenderer()
+MyD3DRender::MyD3DRender() : m_screenWidth(0),
+	m_screenHeight(0), m_near(0), m_far(0), m_Direct3D(0)
 {
-	m_Direct3D = NULL;
-	m_Device = NULL;
+	m_Device = 0;
 	m_renderingScene = false;
 	m_numStaticBuffers = 0;
 	m_activeStaticBuffer = RE_INVALID;
-	m_staticBufferList = NULL;
+	m_staticBufferList = 0;
+	m_terrain = 0;
 
-	m_textureList = NULL;
+	m_engineLog = 0;
+	m_textureList = 0;
 	m_numTextures = 0;
 	m_totalFonts = 0;
-	m_guiList = NULL;
+	m_guiList = 0;
 	m_totalGUIs = 0;
-	m_fonts = NULL;
-	m_xModels = NULL;
+	m_fonts = 0;
+//	m_xModels = 0;
+	m_xModelAnim = 0;
 	m_numXModels = 0;
+	m_skyBox = 0;
+	m_particle = 0;
+	m_engineLog = 0;
 }
 
-MyD3DRenderer::~MyD3DRenderer()
+MyD3DRender::~MyD3DRender()
 {
 	Shutdown();
 }
 
-bool MyD3DRenderer::Initialize(int w, int h, WinHWND mainWin, 
-	bool fullScreen, UGP_MS_TYPE ms)
+bool MyD3DRender::InitRender(int w, int h, WinHWND mainWin, 
+	bool fullScreen, MultiSampleType ms)
 {
+	//释放资源
 	Shutdown();
-
+	m_engineLog = new MyLogSystem("GameLog.log");
 	m_mainHandle = mainWin;
 	if(!m_mainHandle) return false;
 
 	m_fullscreen = fullScreen;
-
+	//创建D3D对象，D3D设备对象
 	D3DDISPLAYMODE mode;
 	D3DCAPS9 caps;
-	D3DPRESENT_PARAMETERS Params;
-
-	ZeroMemory(&Params, sizeof(Params));
-
+	D3DPRESENT_PARAMETERS d3dpp;
+	ZeroMemory(&d3dpp, sizeof(d3dpp));
 	m_Direct3D = Direct3DCreate9(D3D_SDK_VERSION);
-	if(!m_Direct3D) return false;
-
-	if(FAILED(m_Direct3D->GetAdapterDisplayMode(D3DADAPTER_DEFAULT,&mode))) return false;
-
-	if(FAILED(m_Direct3D->GetDeviceCaps(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,&caps))) return false;
-
+	if(!m_Direct3D) 
+		return false;
+	if(FAILED(m_Direct3D->GetAdapterDisplayMode(D3DADAPTER_DEFAULT,&mode))) 
+		return false;
+	if(FAILED(m_Direct3D->GetDeviceCaps(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,&caps))) 
+		return false;
 	DWORD processing = 0;
 	if(caps.VertexProcessingCaps != 0)
 		processing = D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_PUREDEVICE;
 	else
 		processing = D3DCREATE_SOFTWARE_VERTEXPROCESSING;
-
 	if(m_fullscreen)
 	{
-		Params.FullScreen_RefreshRateInHz = mode.RefreshRate;
-		Params.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+		d3dpp.FullScreen_RefreshRateInHz = mode.RefreshRate;
+		d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
 	}
 	else
-		Params.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
-
-	Params.Windowed = !m_fullscreen;
-	Params.BackBufferWidth = w;
-	Params.BackBufferHeight = h;
-	Params.hDeviceWindow = m_mainHandle;
-	Params.SwapEffect = D3DSWAPEFFECT_DISCARD;
-	Params.BackBufferFormat = mode.Format;
-	Params.BackBufferCount = 1;
-	Params.EnableAutoDepthStencil = TRUE;
-	Params.AutoDepthStencilFormat = D3DFMT_D16;
-	Params.MultiSampleType = GetD3DMultiSampleType(m_Direct3D,ms,D3DDEVTYPE_HAL,mode.Format,m_fullscreen);
+		d3dpp.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+	d3dpp.Windowed = !m_fullscreen;
+	d3dpp.BackBufferWidth = w;
+	d3dpp.BackBufferHeight = h;
+	d3dpp.hDeviceWindow = m_mainHandle;
+	d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+	d3dpp.BackBufferFormat = D3DFMT_A8R8G8B8;
+	d3dpp.BackBufferCount = 1;
+	d3dpp.EnableAutoDepthStencil = TRUE;
+	d3dpp.AutoDepthStencilFormat = D3DFMT_D24S8;
+	d3dpp.MultiSampleType = GetD3DMultiSampleType(m_Direct3D,ms,D3DDEVTYPE_HAL,mode.Format,m_fullscreen);
 	m_screenWidth = w;
 	m_screenHeight = h;
-
-	if(FAILED(m_Direct3D->CreateDevice(D3DADAPTER_DEFAULT,D3DDEVTYPE_HAL,m_mainHandle,processing,&Params,&m_Device))) return false;
-	if(m_Device == NULL) return false;
-
+	if (FAILED(m_Direct3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, 
+		m_mainHandle, processing, &d3dpp, &m_Device))) {
+		m_engineLog->AppendLog("[错误：]创建D3D设备失败.");
+		return false;
+	}		
+	if(m_Device == 0)
+		return false;
 	OneTimeInit();
-
 	return true;
 }
 
-void MyD3DRenderer::OneTimeInit()
-{
-	if(!m_Device) return;
-
-	m_Device->SetRenderState(D3DRS_LIGHTING, FALSE);
-	m_Device->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-
-	CalculateProjMatrix(D3DX_PI/4, 0.1f, 1000);
+LPDIRECT3DDEVICE9 MyD3DRender::GetDevice() {
+	return m_Device;
 }
 
-void MyD3DRenderer::CalculateProjMatrix(float fov,float n, float f)
+void MyD3DRender::OneTimeInit()
 {
-	if(!m_Device) return;
+	if(!m_Device) 
+		return;
+	CalculateProjMatrix(D3DX_PI/4, 0.1f, 200000.0f);
+}
+//透视投影
+void MyD3DRender::CalculateProjMatrix(float fov,float n, float f)
+{
+	if(!m_Device) 
+		return;
 	D3DXMATRIX projection;
 
 	D3DXMatrixPerspectiveFovLH(&projection, fov, (float)m_screenWidth/(float)m_screenHeight, n, f);
 
 	m_Device->SetTransform(D3DTS_PROJECTION, &projection);
 }
-
-void MyD3DRenderer::CalculateOrthoMatrix(float n, float f)
+//正交投影
+void MyD3DRender::CalculateOrthoMatrix(float n, float f)
 {
 	if(!m_Device) return;
 	D3DXMATRIX ortho;
@@ -179,29 +190,35 @@ void MyD3DRenderer::CalculateOrthoMatrix(float n, float f)
 	m_Device->SetTransform(D3DTS_PROJECTION, &ortho);
 }
 
-void MyD3DRenderer::SetClearCol(float r, float g, float b)
+void MyD3DRender::SetClearCol(float r, float g, float b)
 {
-	m_Color = D3DCOLOR_COLORVALUE(r,g,b,1.0f);
+	m_Color = D3DCOLOR_XRGB((int)r, (int)g, (int)b);
 }
 
-void MyD3DRenderer::StartRender(bool bColor, bool bDepth, bool bStencil)
+void MyD3DRender::StartRender(bool bColor, bool bDepth, bool bStencil)
 {
-	if(!m_Device) return;
+	if(!m_Device) 
+		return;
 
 	unsigned int buffers = 0;
 	if(bColor) buffers |= D3DCLEAR_TARGET;
 	if(bDepth) buffers |= D3DCLEAR_ZBUFFER;
 	if(bStencil) buffers |= D3DCLEAR_STENCIL;
 
-	if(FAILED(m_Device->Clear(0,NULL,buffers,m_Color,1,0)))
+	if (FAILED(m_Device->Clear(0, NULL, buffers, m_Color, 1.0f, 0))) {
+		m_engineLog->AppendLog("[错误：]清屏失败.-- MyD3DRender::StartRender()");
 		return;
+	}
 	
-	if(FAILED(m_Device->BeginScene())) return;
+	if(FAILED(m_Device->BeginScene())) {
+		m_engineLog->AppendLog("[错误：]开始渲染失败.-- MyD3DRender::StartRender()");
+		return;
+	}
 
 	m_renderingScene = true;
 }	
 
-void MyD3DRenderer::EndRendering()
+void MyD3DRender::EndRendering()
 {
 	if(!m_Device) return;
 
@@ -211,7 +228,7 @@ void MyD3DRenderer::EndRendering()
 	m_renderingScene = false;
 }
 
-void MyD3DRenderer::ClearBuffers(bool bColor, bool bDepth, bool bStencil)
+void MyD3DRender::ClearBuffers(bool bColor, bool bDepth, bool bStencil)
 {
 	if(!m_Device) return;
 
@@ -220,15 +237,21 @@ void MyD3DRenderer::ClearBuffers(bool bColor, bool bDepth, bool bStencil)
 	if(bDepth) buffers |= D3DCLEAR_ZBUFFER;
 	if(bStencil) buffers |= D3DCLEAR_STENCIL;
 
-	if(m_renderingScene) m_Device->EndScene();
-	if(FAILED(m_Device->Clear(0,NULL,buffers,m_Color,1,0)))
+	if(m_renderingScene) 
+		m_Device->EndScene();
+	if(FAILED(m_Device->Clear(0,NULL,buffers,m_Color,1,0))) {
+		m_engineLog->AppendLog("[错误：]清屏失败.-- MyD3DRender::ClearBuffers()");
 		return;
+	}
 
 	if(m_renderingScene)
-		if(FAILED(m_Device->BeginScene())) return;
+		if(FAILED(m_Device->BeginScene())) {
+			m_engineLog->AppendLog("[错误：]清屏失败.-- MyD3DRender::ClearBuffers()");
+			return;
+		}
 }
 
-int MyD3DRenderer::CreateStaticBuffer(VertexType vType, PrimType primType, 
+int MyD3DRender::CreateStaticBuffer(VertexType vType, PrimType primType, 
 	int totalVerts, int totalIndices,
 	int stride, void **data, unsigned int *indices, int *staticId)
 {
@@ -238,7 +261,8 @@ int MyD3DRenderer::CreateStaticBuffer(VertexType vType, PrimType primType,
 	if(!m_staticBufferList)
 	{
 		m_staticBufferList = new myD3DStaticBuffer[1];
-		if(!m_staticBufferList) return RE_FAIL;
+		if(!m_staticBufferList) 
+			return RE_FAIL;
 	}
 	else
 	{
@@ -290,10 +314,10 @@ int MyD3DRenderer::CreateStaticBuffer(VertexType vType, PrimType primType,
 	return RE_OK;
 }
 
-void MyD3DRenderer::Shutdown()
+void MyD3DRender::Shutdown()
 {
-	ReleaseAllStaticBuffers();
-	ReleaseAllXModels();
+	/*ReleaseAllStaticBuffers();
+	ReleaseAllXModels();*/
 
 	for(unsigned int s = 0; s < m_numTextures; s++)
 	{
@@ -332,19 +356,15 @@ void MyD3DRenderer::Shutdown()
 	m_totalGUIs = 0;
 	if(m_guiList) delete[] m_guiList;
 	m_guiList = NULL;
-	if (m_skyVertexBuffer) {
-		m_skyVertexBuffer->Release();
-		delete m_skyVertexBuffer;
-		m_skyVertexBuffer = 0;
+
+	if (m_particle) {
+		m_particle->Shutdown();
 	}
-	for (int i = 0; i<5; i++)
-	{
-		if (m_skyTexture[i]) {
-			m_skyTexture[i]->Release();
-			delete m_skyTexture[i];
-			m_skyTexture[i] = 0;
-		}	
-	}
+
+	SAFE_DELETE(m_engineLog);
+
+	SAFE_DELETE(m_skyBox);
+	SAFE_DELETE(m_terrain);
 
 	if(m_Device) m_Device->Release();
 	if(m_Direct3D) m_Direct3D->Release();
@@ -353,7 +373,7 @@ void MyD3DRenderer::Shutdown()
 	m_Direct3D = NULL;
 }
 
-int MyD3DRenderer::RenderStaticBuffer(int staticId)
+int MyD3DRender::RenderStaticBuffer(int staticId)
 {
 	if(staticId >= m_numStaticBuffers) return RE_FAIL;
 
@@ -452,7 +472,7 @@ int MyD3DRenderer::RenderStaticBuffer(int staticId)
 	return RE_OK;
 }
 
-void MyD3DRenderer::SetMaterial(myMaterial *mat)
+void MyD3DRender::SetMaterial(myMaterial *mat)
 {
 	if(!mat || !m_Device) return ;
 
@@ -470,61 +490,64 @@ void MyD3DRenderer::SetMaterial(myMaterial *mat)
 	m_Device->SetMaterial(&m);
 }
 
-void MyD3DRenderer::SetLight(myLight *light, int index)
+void MyD3DRender::SetLight(myLight *light, int index)
 {
 	if(!light || !m_Device || index < 0) return;
 
 	D3DLIGHT9 l;
 
-	l.Ambient.a = light->ambientA;
-	l.Ambient.r = light->ambientR;
-	l.Ambient.g = light->ambientG;
-	l.Ambient.b = light->ambientB;
-
-	l.Attenuation0 = light->attenuation0;
-	l.Attenuation1 = light->attenuation1;
-	l.Attenuation2 = light->attenuation2;
-
-	l.Diffuse.a = light->diffuseA;
-	l.Diffuse.r = light->diffuseR;
-	l.Diffuse.g = light->diffuseG;
-	l.Diffuse.b = light->diffuseB;
-
 	l.Direction.x = light->dirX;
 	l.Direction.y = light->dirY;
 	l.Direction.z = light->dirZ;
-
-	l.Falloff = light->falloff;
-	l.Phi = light->lightPhi;
 
 	l.Position.x = light->posX;
 	l.Position.y = light->posY;
 	l.Position.z = light->posZ;
 
-	l.Range = light->range;
-
-	l.Specular.a = light->specularA;
-	l.Specular.r = light->specularR;
-	l.Specular.g = light->specularG;
-	l.Specular.b = light->specularB;
-
-	l.Theta = light->lightTheta;
-
-	if(light->lightType == LIGHT_POINT) l.Type = D3DLIGHT_POINT;
-	else if(light->lightType == LIGHT_SPOT) l.Type = D3DLIGHT_SPOT;
-	else l.Type = D3DLIGHT_DIRECTIONAL;
+	if (light->lightType == LIGHT_POINT) {
+		l.Type = D3DLIGHT_POINT;
+		l.Ambient = light->color*0.6f;
+		l.Diffuse = light->color;
+		l.Specular = light->color*0.6f;
+		l.Falloff = 1.0f;
+		l.Range = 1000.0f;
+		l.Attenuation0 = 1.0f;
+		l.Attenuation1 = 0.0f;
+		l.Attenuation2 = 0.0f;
+	}
+		
+	else if (light->lightType == LIGHT_SPOT) {
+		l.Type = D3DLIGHT_SPOT;
+		l.Ambient = light->color*0.0f;
+		l.Diffuse = light->color;
+		l.Specular = light->color*0.6f;
+		l.Falloff = 1.0f;
+		l.Range = 1000.0f;
+		l.Attenuation0 = 1.0f;
+		l.Attenuation1 = 0.0f;
+		l.Attenuation2 = 0.0f;
+		l.Theta = 0.4f;
+		l.Phi = 0.9f;
+	}
+		
+	else {
+		l.Type = D3DLIGHT_DIRECTIONAL;
+		l.Ambient = light->color * 0.6f;
+		l.Diffuse = light->color;
+		l.Specular = light->color * 0.6f;
+	}
 
 	m_Device->SetLight(index,&l);
 	m_Device->LightEnable(index,TRUE);
 }
 
-void MyD3DRenderer::DisabledLight(int index)
+void MyD3DRender::DisabledLight(int index)
 {
 	if(!m_Device) return;
 	m_Device->LightEnable(index,FALSE);
 }
 
-void MyD3DRenderer::SetTranspency(RenderState state, TransState src, TransState dst)
+void MyD3DRender::SetTranspency(RenderState state, TransState src, TransState dst)
 {
 	if(!m_Device) return;
 
@@ -646,7 +669,7 @@ void MyD3DRenderer::SetTranspency(RenderState state, TransState src, TransState 
 	}
 }
 
-int MyD3DRenderer::AddTexture2D(char *file, int *texId)
+int MyD3DRender::AddTexture2D(char *file, int *texId)
 {
 	if(!file || !m_Device) return RE_FAIL;
 
@@ -676,10 +699,13 @@ int MyD3DRenderer::AddTexture2D(char *file, int *texId)
 	D3DCOLOR colorkey = 0xff000000;
 	D3DXIMAGE_INFO info;
 
-	if(D3DXCreateTextureFromFileEx(m_Device,file,0,0,0,0,
+	if (D3DXCreateTextureFromFileEx(m_Device, file, 0, 0, 0, 0,
 		D3DFMT_UNKNOWN, D3DPOOL_MANAGED, D3DX_DEFAULT,
-		D3DX_DEFAULT,colorkey,&info,NULL,
-		&m_textureList[index].image) != D3D_OK) return false;
+		D3DX_DEFAULT, colorkey, &info, NULL,
+		&m_textureList[index].image) != D3D_OK) {
+		m_engineLog->AppendLog("[错误：]创建纹理贴图失败.-- MyD3DRender::AddTexture2D()");
+		return false;
+	}
 
 	m_textureList[index].width = info.Width;
 	m_textureList[index].height = info.Height;
@@ -690,7 +716,7 @@ int MyD3DRenderer::AddTexture2D(char *file, int *texId)
 	return RE_OK;
 }
 
-void MyD3DRenderer::SetTextureFilter(int index, int filter, int val)
+void MyD3DRender::SetTextureFilter(int index, int filter, int val)
 {
 	if(!m_Device || index < 0) return;
 
@@ -708,7 +734,7 @@ void MyD3DRenderer::SetTextureFilter(int index, int filter, int val)
 	m_Device->SetSamplerState(index,fil,v);
 }
 
-void MyD3DRenderer::SetMultiTexture()
+void MyD3DRender::SetMultiTexture()
 {
 	if(!m_Device) return;
 
@@ -724,7 +750,7 @@ void MyD3DRenderer::SetMultiTexture()
 
 }
 
-void MyD3DRenderer::ApplyTexture(int index, int texId)
+void MyD3DRender::ApplyTexture(int index, int texId)
 {
 	if(!m_Device) return;
 
@@ -734,7 +760,7 @@ void MyD3DRenderer::ApplyTexture(int index, int texId)
 		m_Device->SetTexture(index, m_textureList[texId].image);
 }
 
-void MyD3DRenderer::SaveScreenShot(char *file)
+void MyD3DRender::SaveScreenShot(char *file)
 {
 	if(!file) return;
 
@@ -751,7 +777,7 @@ void MyD3DRenderer::SaveScreenShot(char *file)
 	surface = NULL;
 }
 
-void MyD3DRenderer::EnablePointSprites(float size, float min, float a, float b, float c)
+void MyD3DRender::EnablePointSprites(float size, float min, float a, float b, float c)
 {
 	if(!m_Device) return;
 
@@ -764,13 +790,13 @@ void MyD3DRenderer::EnablePointSprites(float size, float min, float a, float b, 
 	m_Device->SetRenderState(D3DRS_POINTSCALE_C,FtoDW(c));
 }
 
-void MyD3DRenderer::DisablePointSprites()
+void MyD3DRender::DisablePointSprites()
 {
 	m_Device->SetRenderState(D3DRS_POINTSPRITEENABLE,FALSE);
 	m_Device->SetRenderState(D3DRS_POINTSCALEENABLE,FALSE);
 }
 
-bool MyD3DRenderer::AddGUIBackdrop(int guiId, char *fileName)
+bool MyD3DRender::AddGUIBackdrop(int guiId, char *fileName)
 {
 	if(guiId >= m_totalGUIs) return false;
 
@@ -793,7 +819,7 @@ bool MyD3DRenderer::AddGUIBackdrop(int guiId, char *fileName)
 	return m_guiList[guiId].AddBackdrop(texID, staticID);
 }
 
-bool MyD3DRenderer::AddGUIStaticText(int guiId, int id,
+bool MyD3DRender::AddGUIStaticText(int guiId, int id,
 		char *text, int x, int y, unsigned long color,
 		int fontID)
 {
@@ -802,7 +828,7 @@ bool MyD3DRenderer::AddGUIStaticText(int guiId, int id,
 	return m_guiList[guiId].AddStaticText(id, text, x, y, color, fontID);
 }
 
-bool MyD3DRenderer::AddGUIButton(int guiId, int id, int x, int y,
+bool MyD3DRender::AddGUIButton(int guiId, int id, int x, int y,
 		char *up, char *over, char *down)
 {
 	if(guiId >= m_totalGUIs) return false;
@@ -835,7 +861,18 @@ bool MyD3DRenderer::AddGUIButton(int guiId, int id, int x, int y,
 	return true;
 }
 
-void MyD3DRenderer::ProcessGUI(int guiId, bool LMBDown,
+//删除按钮
+bool MyD3DRender::DelGUIButton(int guiId, int id) {
+	m_guiList[guiId].DelButton(id);
+	return true;
+}
+//删除静态文本
+bool MyD3DRender::DelGUIStaticText(int guiId, int id) {
+	m_guiList[guiId].DelStaticText(id);
+	return true;
+}
+
+void MyD3DRender::ProcessGUI(int guiId, bool LMBDown,
 		int mouseX, int mouseY,
 		void(*funcPtr)(int id, int state))
 {
@@ -881,9 +918,12 @@ void MyD3DRenderer::ProcessGUI(int guiId, bool LMBDown,
                         else status = MOUSE_BUTTON_OVER;
                      }
 
-                  if(status == MOUSE_BUTTON_UP) ApplyTexture(0, pCnt->m_upTex);
-                  if(status == MOUSE_BUTTON_OVER) ApplyTexture(0, pCnt->m_overTex);
-                  if(status == MOUSE_BUTTON_DOWN) ApplyTexture(0, pCnt->m_downTex);
+                  if(status == MOUSE_BUTTON_UP) 
+					  ApplyTexture(0, pCnt->m_upTex);
+                  if(status == MOUSE_BUTTON_OVER) 
+					  ApplyTexture(0, pCnt->m_overTex);
+                  if(status == MOUSE_BUTTON_DOWN) 
+					  ApplyTexture(0, pCnt->m_downTex);
 
 				  RenderStaticBuffer(pCnt->m_listID);                 
 
@@ -895,7 +935,7 @@ void MyD3DRenderer::ProcessGUI(int guiId, bool LMBDown,
       }
 }
 
-bool MyD3DRenderer::CreateText(char *font, int weight, bool italic, int size, int &id)
+bool MyD3DRender::CreateText(char *font, int weight, bool italic, int size, int &id)
 {
 	if(!m_fonts)
 	{
@@ -914,14 +954,17 @@ bool MyD3DRenderer::CreateText(char *font, int weight, bool italic, int size, in
 	}
 
 	if(FAILED(D3DXCreateFont(m_Device,size,0,weight,1,italic,
-		0,0,0,0,font,&m_fonts[m_totalFonts]))) return false;
+		0,0,0,0,font,&m_fonts[m_totalFonts]))) {
+		m_engineLog->AppendLog("[错误：]创建字体失败.-- MyD3DRender::CreateText()");
+		return false;
+	}
 	id = m_totalFonts;
 	m_totalFonts++;
 
 	return true;
 }
 
-void MyD3DRenderer::DisplayText(int id, long x, long y, int r, int g, int b, char *text, ...)
+void MyD3DRender::DisplayText(int id, long x, long y, int r, int g, int b, char *text, ...)
 {
 	RECT FontPosition = {x,y,m_screenWidth,m_screenHeight};
 	char message[1024];
@@ -930,48 +973,40 @@ void MyD3DRenderer::DisplayText(int id, long x, long y, int r, int g, int b, cha
 	if(id>=m_totalFonts) return;
 
 	va_start(argList,text);
-	vsprintf(message,text,argList);
+	vsprintf(message, text, argList);
 	va_end(argList);
 
 	m_fonts[id]->DrawText(NULL,message,-1,&FontPosition,
 		DT_SINGLELINE,D3DCOLOR_ARGB(255,r,g,b));
 }
 
-void MyD3DRenderer::DisplayText(int id, long x, long y, unsigned long color, char *text, ...)
+void MyD3DRender::DisplayText(int id, long x, long y, unsigned long color, char *text, ...)
 {
-	RECT FontPosition = {x,y,m_screenWidth,m_screenHeight};
-	char message[1024];
-	va_list argList;
-
+	RECT fontPos = {x,y,m_screenWidth,m_screenHeight};
+	char temp[1024];
+	va_list textList;
 	if(id>=m_totalFonts) return;
-
-	va_start(argList,text);
-	vsprintf(message,text,argList);
-	va_end(argList);
-
-	m_fonts[id]->DrawText(NULL,message,-1,&FontPosition,
+	va_start(textList,text);
+	vsprintf(temp,text,textList);
+	va_end(textList);
+	m_fonts[id]->DrawText(NULL,temp,-1,&fontPos,
 		DT_SINGLELINE,color);
 }
-
-void MyD3DRenderer::EnableFog(float start, float end, UGP_FOG_TYPE type, 
+//开启雾效
+void MyD3DRender::EnableFog(float start, float end, FogType type, 
 	unsigned long color, bool rangeFog)
 {
 	if(!m_Device) return;
-
 	D3DCAPS9 caps;
 	m_Device->GetDeviceCaps(&caps);
-
 	m_Device->SetRenderState(D3DRS_FOGENABLE,true);
 	m_Device->SetRenderState(D3DRS_FOGCOLOR, color);
-
 	m_Device->SetRenderState(D3DRS_FOGSTART, *(DWORD*)(&start));
 	m_Device->SetRenderState(D3DRS_FOGEND,*(DWORD*)(&end));
-
-	if(type == UGP_VERTEX_FOG)
+	if(type == FOG_VERTEX)
 		m_Device->SetRenderState(D3DRS_FOGVERTEXMODE,D3DFOG_LINEAR);
 	else
 		m_Device->SetRenderState(D3DRS_FOGTABLEMODE,D3DFOG_LINEAR);
-
 	if(caps.RasterCaps & D3DPRASTERCAPS_FOGRANGE)
 	{
 		if(rangeFog)
@@ -980,15 +1015,15 @@ void MyD3DRenderer::EnableFog(float start, float end, UGP_FOG_TYPE type,
 			m_Device->SetRenderState(D3DRS_RANGEFOGENABLE,false);
 	}
 }
-
-void MyD3DRenderer::DisableFog()
+//关闭雾效
+void MyD3DRender::DisableFog()
 {
 	if(!m_Device) return;
 
 	m_Device->SetRenderState(D3DRS_FOGENABLE, false);
 }
 
-void MyD3DRenderer::SetDetailMapping()
+void MyD3DRender::SetDetailMapping()
 {
 	if(!m_Device) return;
 
@@ -1004,175 +1039,22 @@ void MyD3DRenderer::SetDetailMapping()
 
 }
 
-int MyD3DRenderer::LoadXModel(char *file, int *xModelId)
+//视图变化
+void MyD3DRender::SetViewMatrix(MyMatrix4x4 *mat)
 {
-	if(!file)
-		return RE_FAIL;
+	if (!m_Device || !mat) return;
 
-	if(!m_xModels)
-	{
-		m_xModels = new MyXModel[1];
-		if(!m_xModels) return RE_FAIL;
-		m_xModels[0].SetDevice(m_Device);
-	}
-	else
-	{
-		MyXModel *temp;
-		temp = new MyXModel[m_numXModels + 1];
-		memcpy(temp,m_xModels,sizeof(MyXModel)*m_numXModels);
-		delete[] m_xModels;
-		m_xModels = temp;
-
-		m_xModels[m_numXModels].SetDevice(m_Device);
-	}
-
-	if(!m_xModels[m_numXModels].LoadXFile(file))
-		return RE_FAIL;
-
-	*xModelId = m_numXModels;
-	m_numXModels++;
-
-	return RE_OK;
+	m_Device->SetTransform(D3DTS_VIEW, (D3DXMATRIX*)mat->matrix);
 }
-
-int MyD3DRenderer::LoadXModel(char *file, int xModelId)
-{
-	if(!file || xModelId < 0 || xModelId >= m_numXModels || !m_xModels) return RE_FAIL;
-
-	m_xModels[xModelId].Shutdown();
-
-	if(!m_xModels[xModelId].LoadXFile(file))
-		return RE_FAIL;
-
-	return RE_OK;
-}
-
-int MyD3DRenderer::RenderXModel(int xModelId)
-{
-	if(!m_xModels || xModelId >= m_numXModels || xModelId < 0)
-		return RE_FAIL;
-
-	m_Device->SetIndices(NULL);
-	m_Device->SetStreamSource(0,NULL,0,0);
-	m_Device->SetFVF(0);
-
-	m_xModels[xModelId].Render();
-
-	return RE_OK;
-}
-
-int MyD3DRenderer::ReleaseXModel(int xModelId)
-{
-	if(!m_xModels || xModelId >= m_numXModels || xModelId < 0)
-		return RE_FAIL;
-
-	m_xModels[xModelId].Shutdown();
-
-	return RE_OK;
-}
-
-void MyD3DRenderer::ReleaseAllStaticBuffers()
-{
-	for(int s=0; s<m_numStaticBuffers; s++)
-	{
-		ReleaseStaticBuffer(s);
-	}
-
-	m_numStaticBuffers = 0;
-	if(m_staticBufferList) delete[] m_staticBufferList;
-	m_staticBufferList = NULL;
-}
-
-void MyD3DRenderer::ReleaseAllXModels()
-{
-	for(int s=0; s<m_numXModels; s++)
-	{
-		m_xModels[s].Shutdown();
-	}
-
-	m_numXModels = 0;
-	if(m_xModels) delete[] m_xModels;
-	m_xModels = NULL; 
-}
-
-int MyD3DRenderer::ReleaseStaticBuffer(int staticID)
-{
-	if(staticID < 0 || staticID >= m_numStaticBuffers || 
-		!m_staticBufferList) return RE_FAIL;
-
-	m_staticBufferList[staticID].fvf = 0;
-	m_staticBufferList[staticID].numIndices = 0;
-	m_staticBufferList[staticID].numVerts = 0;
-	m_staticBufferList[staticID].stride = 0;
-
-	if(m_staticBufferList[staticID].vbPtr)
-	{
-		m_staticBufferList[staticID].vbPtr->Release();
-		m_staticBufferList[staticID].vbPtr = NULL;
-	}
-	if(m_staticBufferList[staticID].ibPtr)
-	{
-		m_staticBufferList[staticID].ibPtr->Release();
-		m_staticBufferList[staticID].ibPtr = NULL;
-	}
-
-	return RE_OK;
-}
-
-void MyD3DRenderer::ApplyView(MyVector3 pos, MyVector3 view, MyVector3 up)
-{
-	if(!m_Device) return;
-
-	D3DXVECTOR3 cameraPos(pos.x,pos.y,pos.z);
-	D3DXVECTOR3 lookAtPos(view.x, view.y, view.z);
-	D3DXVECTOR3 upDir(up.x,up.y,up.z);
-
-	D3DXMATRIX mat;
-	D3DXMatrixLookAtLH(&mat, &cameraPos, &lookAtPos, &upDir);
-
-	m_Device->SetTransform(D3DTS_VIEW, &mat);
-}
-
-void MyD3DRenderer::SetWorldMatrix(MyMatrix4x4 *mat)
+//世界变化
+void MyD3DRender::SetWorldMatrix(const MyMatrix4x4 *mat)
 {
 	if(!m_Device || !mat) return;
 
 	m_Device->SetTransform(D3DTS_WORLD, (D3DXMATRIX*)mat->matrix);
 }
 
-void MyD3DRenderer::CameraToViewMatrix(MyCamera *cam, MyMatrix4x4 *mat)
-{
-	if(!cam || !mat) return;
-
-	D3DXVECTOR3 cameraPos(cam->m_pos.x,cam->m_pos.y,cam->m_pos.z);
-	D3DXVECTOR3 lookAtPos(cam->m_view.x,cam->m_view.y,cam->m_view.z);
-	D3DXVECTOR3 upDir(cam->m_up.x,cam->m_up.y,cam->m_up.z);
-
-	D3DXMATRIX view;
-	D3DXMatrixLookAtLH(&view,&cameraPos,&lookAtPos,&upDir);
-
-	mat->matrix[0] = view._11;
-	mat->matrix[1] = view._12;
-	mat->matrix[2] = view._13;
-	mat->matrix[3] = view._14;
-
-	mat->matrix[4] = view._21;
-	mat->matrix[5] = view._22;
-	mat->matrix[6] = view._23;
-	mat->matrix[7] = view._24;
-
-	mat->matrix[8] = view._31;
-	mat->matrix[9] = view._32;
-	mat->matrix[10] = view._33;
-	mat->matrix[11] = view._34;
-
-	mat->matrix[12] = view._41;
-	mat->matrix[13] = view._42;
-	mat->matrix[14] = view._43;
-	mat->matrix[15] = view._44;
-}
-
-void MyD3DRenderer::GetProjectMatrix(MyMatrix4x4 *mat)
+void MyD3DRender::GetProjectMatrix(MyMatrix4x4 *mat)
 {
 	if(!mat) return;
 
@@ -1196,105 +1078,153 @@ void MyD3DRenderer::GetProjectMatrix(MyMatrix4x4 *mat)
 	mat->matrix[14] = m_projection._43;
 	mat->matrix[15] = m_projection._44;
 }
-
-bool MyD3DRenderer::InitSkyBox(float Length) {
-	m_Length = Length;
-
-	//1.创建。创建顶点缓存
-	m_Device->CreateVertexBuffer(20 * sizeof(mySkyBoxVertex), 0,
-		D3DFVF_SKYBOX, D3DPOOL_MANAGED, &m_skyVertexBuffer, 0);
-
-	//用一个结构体把顶点数据先准备好
-	mySkyBoxVertex vertices[] =
+//创建初始化粒子系统
+void MyD3DRender::InitParticle(int type, int length, int width, int height,char* fileName,int numParticles, MyVector3 pos) {
+	parType = type;
+	if (type == 0)
 	{
-		//前面的四个顶点
-		{ -m_Length / 2, 0.0f,    m_Length / 2, 0.0f, 1.0f, },
-		{ -m_Length / 2, m_Length / 2,   m_Length / 2, 0.0f, 0.0f, },
-		{ m_Length / 2, 0.0f,    m_Length / 2, 1.0f, 1.0f, },
-		{ m_Length / 2, m_Length / 2,   m_Length / 2, 1.0f, 0.0f, },
+		BoundingBox boundingBox;
+		
+		boundingBox.m_min = D3DXVECTOR3(pos.x - width / 2.0f, 0, pos.z - length / 2.0f);
+		boundingBox.m_max = D3DXVECTOR3(pos.x + width / 2.0f, pos.y, pos.z + length / 2.0f);
+		m_parSystem = new Snow(&boundingBox, numParticles);
+		m_parSystem->init(m_Device, fileName);
+	}
+	else if (type == 1)
+	{
+		D3DXVECTOR3 origin(pos.x, pos.y, pos.z);
+		m_parSystem = new Firework(&origin, numParticles);
+		m_parSystem->init(m_Device, fileName);
+	}
+	else if (type == 2)
+	{
+		/*m_parSystem = new ParticleGun(&m_Camera);
+		m_parSystem->init(m_Device, fileName);*/
+	}
+}
+//渲染粒子系统
+bool MyD3DRender::RenderParticle(float fElapsedTime) {
 
-		//背面的四个顶点
-		{ m_Length / 2, 0.0f,   -m_Length / 2, 0.0f, 1.0f, },
-		{ m_Length / 2, m_Length / 2,  -m_Length / 2, 0.0f, 0.0f, },
-		{ -m_Length / 2, 0.0f,   -m_Length / 2, 1.0f, 1.0f, },
-		{ -m_Length / 2, m_Length / 2,  -m_Length / 2, 1.0f, 0.0f, },
-
-		//左面的四个顶点
-		{ -m_Length / 2, 0.0f,   -m_Length / 2, 0.0f, 1.0f, },
-		{ -m_Length / 2, m_Length / 2,  -m_Length / 2, 0.0f, 0.0f, },
-		{ -m_Length / 2, 0.0f,    m_Length / 2, 1.0f, 1.0f, },
-		{ -m_Length / 2, m_Length / 2,   m_Length / 2, 1.0f, 0.0f, },
-
-		//右面的四个顶点
-		{ m_Length / 2, 0.0f,   m_Length / 2, 0.0f, 1.0f, },
-		{ m_Length / 2, m_Length / 2,  m_Length / 2, 0.0f, 0.0f, },
-		{ m_Length / 2, 0.0f,  -m_Length / 2, 1.0f, 1.0f, },
-		{ m_Length / 2, m_Length / 2, -m_Length / 2, 1.0f, 0.0f, },
-
-		//上面的四个顶点
-		{ m_Length / 2, m_Length / 2, -m_Length / 2, 1.0f, 0.0f, },
-		{ m_Length / 2, m_Length / 2,  m_Length / 2, 1.0f, 1.0f, },
-		{ -m_Length / 2, m_Length / 2, -m_Length / 2, 0.0f, 0.0f, },
-		{ -m_Length / 2, m_Length / 2,  m_Length / 2, 0.0f, 1.0f, },
-
-	};
-
-	//准备填充顶点数据
-	void* pVertices;
-	//2.加锁
-	m_skyVertexBuffer->Lock(0, 0, (void**)&pVertices, 0);
-	//3.访问。把结构体中的数据直接拷到顶点缓冲区中
-	memcpy(pVertices, vertices, sizeof(vertices));
-	//4.解锁
-	m_skyVertexBuffer->Unlock();
-
+	if (parType == 0)
+	{
+		m_parSystem->update(fElapsedTime);
+	}
+	else if (parType == 1)
+	{
+		m_parSystem->update(fElapsedTime);
+		if (m_parSystem->isDead())
+			m_parSystem->reset();
+	}
+	else if (parType == 2)
+	{
+		m_parSystem->update(fElapsedTime);
+	}
+	m_parSystem->render();
+	//m_particle->RenderParticle(fElapsedTime);	
 	return true;
 }
-bool MyD3DRenderer::LoadSkyTextureFromFile(char *pFrontTextureFile, 
-	char *pBackTextureFile, 
-	char *pLeftTextureFile, 
-	char *pRightTextureFile, 
-	char *pTopTextureFile) {
-	//从文件加载五张纹理
-	D3DXCreateTextureFromFile(m_Device, pFrontTextureFile, &m_skyTexture[0]);  //前面
-	D3DXCreateTextureFromFile(m_Device, pBackTextureFile, &m_skyTexture[1]);  //后面
-	D3DXCreateTextureFromFile(m_Device, pLeftTextureFile, &m_skyTexture[2]);  //左面
-	D3DXCreateTextureFromFile(m_Device, pRightTextureFile, &m_skyTexture[3]);  //右面
-	D3DXCreateTextureFromFile(m_Device, pTopTextureFile, &m_skyTexture[4]);  //上面	
+//创建初始化天空盒
+bool MyD3DRender::InitSkyBox(float skyLen, std::vector<char *> skyName) {
+	m_skyBox = new MySkyBox(m_Device);	
+	m_skyBox->LoadSkyTextureFromFile(skyName);
+	m_skyBox->InitSkyBox(skyLen);
 	return true;
-
 }
-void MyD3DRenderer::RenderSkyBox(D3DXMATRIX *pMatWorld, bool bRenderFrame) {
-	m_Device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);  //将纹理颜色混合的第一个参数的颜色值用于输出
-	m_Device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);   //纹理颜色混合的第一个参数的值就取纹理颜色值
-	m_Device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_MIRROR);
-	m_Device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_MIRROR);
+//渲染天空盒
+bool MyD3DRender::RenderSkyBox(D3DXMATRIX *pMatWorld, bool bRenderFrame) {
+	m_skyBox->RenderSkyBox(pMatWorld, bRenderFrame);
+	return true;
+}
+//创建初始化地形
+bool MyD3DRender::InitTerrain(std::string heightmapFileName,
+	int numVertsPerRow,
+	int numVertsPerCol,
+	int cellSpacing,
+	float heightScale,
+	std::string textureFileName) {
+	m_terrain = new MyTerrain(m_Device,heightmapFileName, numVertsPerRow, numVertsPerCol, cellSpacing, heightScale);
+	m_terrain->loadTexture(textureFileName);
+	return true;
+}
+//渲染地形
+void MyD3DRender::RenderTerrain(bool drawTris) {
+	D3DXMATRIX I;
+	D3DXMatrixIdentity(&I);
+	m_terrain->renderTerrain(&I, drawTris);
+}
+//获取某一坐标地形高度
+float MyD3DRender::getHeight(float x, float z) {
+	return m_terrain->getHeight(x, z);
+}
 
-	//Alpha混合设置, 设置混合系数
-	m_Device->SetRenderState(D3DRS_ALPHABLENDENABLE, false);
-	m_Device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_DESTALPHA);
-	m_Device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVDESTALPHA);
-	m_Device->SetTransform(D3DTS_WORLD, pMatWorld);  //设置世界矩阵
-	m_Device->SetStreamSource(0, m_skyVertexBuffer, 0, sizeof(mySkyBoxVertex));    //把包含的几何体信息的顶点缓存和渲染流水线相关联  
-	m_Device->SetFVF(D3DFVF_SKYBOX);  //设置FVF灵活顶点格式
-
-										  //一个for循环，将5个面绘制出来
-	for (int i = 0; i<5; i++)
-	{
-		m_Device->SetTexture(0, m_skyTexture[i]);
-		m_Device->DrawPrimitive(D3DPT_TRIANGLESTRIP, i * 4, 2);
+void MyD3DRender::InitObj(int type, MyVector3 pos, MyVector3 rot, MyVector3 scale, MyVector3 color) {
+	m_objects.push_back(0);
+	m_trans.push_back(D3DXMATRIX());
+	D3DXMatrixTranslation(&m_trans.at(m_trans.size() - 1), pos.x, pos.y, pos.z);
+	D3DXCOLOR col(D3DCOLOR_XRGB(static_cast<int>(color.x), static_cast<int>(color.y), static_cast<int>(color.z)));
+	D3DMATERIAL9 mtrl;
+	mtrl.Ambient = col;
+	mtrl.Diffuse = col;
+	mtrl.Specular = col;
+	mtrl.Emissive = col;
+	mtrl.Power = 2.0f;
+	m_mtrls.push_back(mtrl);
+	switch (type) {
+	case 0://cube				
+		D3DXCreateBox(m_Device, scale.x, scale.y, scale.z, &m_objects.at(m_objects.size()-1), 0);	
+		break;
+	case 1://sphere
+		D3DXCreateSphere(m_Device, 1.0f, 20, 20, &m_objects.at(m_objects.size() - 1), 0);
+		break;
 	}
+}
 
-	//对是否渲染线框的处理代码
-	if (bRenderFrame)  //如果要渲染出线框的话
-	{
-		m_Device->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME); //把填充模式设为线框填充
-																		 //一个for循环，将5个面的线框绘制出来
-		for (int i = 0; i<5; i++)
-		{
-			m_Device->DrawPrimitive(D3DPT_TRIANGLESTRIP, i * 4, 2);	//绘制顶点 
-		}
-
-		m_Device->SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);	//把填充模式调回实体填充
+void MyD3DRender::RenderObj() {
+	for (int i = 0; i != m_objects.size(); ++i) {
+		m_Device->SetMaterial(&m_mtrls[i]);
+		m_Device->SetTransform(D3DTS_WORLD, &m_trans[i]);
+		m_objects[i]->DrawSubset(0);
 	}
+	
+}
+
+void MyD3DRender::SetXModelMatrix(int id, MyMatrix4x4& mat) {
+	m_vecXModelAnim[id]->SetMatrix(mat);
+}
+
+void MyD3DRender::SetXModelScaleMatrix(int id, D3DXMATRIX& mat) {
+	m_vecXModelAnim[id]->SetScaleMatrix(mat);
+}
+
+void MyD3DRender::UpdateXModelAnim(float fTimeDelta) {
+	for (auto &xModel : m_vecXModelAnim) {
+		xModel->UpdateXModel(fTimeDelta);
+	}	
+}
+
+void MyD3DRender::RenderXModelAnim() {
+	for (auto &xModel : m_vecXModelAnim) {
+		//this->SetWorldMatrix(&xModel->GetMatrix());
+		xModel->RenderXModel();
+	}	
+}
+
+void MyD3DRender::AddXModel(char *name) {
+	m_xModelAnim = new MyXModelAnim(m_Device);
+	if (name == "") {
+		return;
+	}
+	m_xModelAnim->InitXModel(name);
+	m_vecXModelAnim.push_back(m_xModelAnim);
+}
+
+void MyD3DRender::DelXModel(int i) {
+	m_vecXModelAnim.erase(m_vecXModelAnim.begin()+i);
+}
+
+void MyD3DRender::ChangeXModel(int i,char *name) {
+	delete m_vecXModelAnim.at(i);
+	m_xModelAnim = new MyXModelAnim(m_Device);
+	m_xModelAnim->InitXModel(name);
+	m_vecXModelAnim.at(i) = m_xModelAnim;
 }
